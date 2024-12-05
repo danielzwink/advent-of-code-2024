@@ -14,102 +14,115 @@ func main() {
 func part1() int {
 	rules, updates := readRulesAndUpdates("05/input")
 
-	correctUpdates := make([][]int, 0)
+	orderedUpdates := make([][]int, 0)
 	for _, update := range updates {
-		if isUpdateInRightOrder(update, rules) {
-			correctUpdates = append(correctUpdates, update)
+		if isUpdateCorrectlyOrdered(update, rules) {
+			orderedUpdates = append(orderedUpdates, update)
 		}
 	}
 
 	sum := 0
-	for _, update := range correctUpdates {
-		i := (len(update) - 1) / 2
-		sum += update[i]
+	for _, update := range orderedUpdates {
+		sum += getMiddlePageNumber(update)
 	}
-
 	return sum
 }
 
 func part2() int {
 	rules, updates := readRulesAndUpdates("05/input")
 
-	incorrectUpdates := make([][]int, 0)
+	unorderedUpdates := make([][]int, 0)
 	for _, update := range updates {
-		if !isUpdateInRightOrder(update, rules) {
-			incorrectUpdates = append(incorrectUpdates, update)
+		if !isUpdateCorrectlyOrdered(update, rules) {
+			unorderedUpdates = append(unorderedUpdates, update)
 		}
 	}
 
-	for _, update := range incorrectUpdates {
-		for fixIncorrectUpdate(update, rules) {
+	for _, update := range unorderedUpdates {
+		for fixSingleViolation(update, rules) {
+			// until fixed
 		}
 	}
 
 	sum := 0
-	for _, update := range incorrectUpdates {
-		i := (len(update) - 1) / 2
-		sum += update[i]
+	for _, update := range unorderedUpdates {
+		sum += getMiddlePageNumber(update)
 	}
-
 	return sum
 }
 
-func isUpdateInRightOrder(update []int, rules map[int]map[int]struct{}) bool {
-	for i, n := range update[1:] {
-		rule, exists := rules[n]
-		if exists {
-			for _, pre := range update[0 : i+1] {
-				_, violation := rule[pre]
-				if violation {
-					return false
-				}
+func isUpdateCorrectlyOrdered(update []int, rules map[int]map[int]struct{}) bool {
+	for i, number := range update[1:] {
+		successors, exist := rules[number]
+		if !exist {
+			continue
+		}
+
+		for _, pre := range update[0 : i+1] {
+			_, violation := successors[pre]
+			if violation {
+				return false
 			}
 		}
 	}
 	return true
 }
 
-func fixIncorrectUpdate(update []int, rules map[int]map[int]struct{}) bool {
-	for i, n := range update[1:] {
-		rule, exists := rules[n]
-		if exists {
-			for k, pre := range update[0 : i+1] {
-				_, violation := rule[pre]
-				if violation {
-					update[i+1] = pre
-					update[k] = n
-					return true
-				}
+func fixSingleViolation(update []int, rules map[int]map[int]struct{}) bool {
+	for i, number := range update[1:] {
+		successors, exist := rules[number]
+		if !exist {
+			continue
+		}
+
+		for k, pre := range update[0 : i+1] {
+			_, violation := successors[pre]
+			if violation {
+				update[i+1] = pre
+				update[k] = number
+				return true
 			}
 		}
 	}
 	return false
 }
 
+func getMiddlePageNumber(update []int) int {
+	i := (len(update) - 1) / 2
+	return update[i]
+}
+
 func readRulesAndUpdates(day string) (map[int]map[int]struct{}, [][]int) {
 	lines := util.ReadFile(day)
+	separator := getSeparator(lines)
 
 	rules := make(map[int]map[int]struct{})
-	updates := make([][]int, 0)
-	readRules := true
+	for _, line := range lines[0:separator] {
+		pre, suc := splitRule(line)
+		successors, exist := rules[pre]
+		if !exist {
+			successors = make(map[int]struct{})
+		}
+		successors[suc] = struct{}{}
+		rules[pre] = successors
+	}
 
-	for _, line := range lines {
+	updates := make([][]int, 0)
+	for _, line := range lines[separator+1:] {
+		update := splitUpdate(line)
+		updates = append(updates, update)
+	}
+
+	return rules, updates
+}
+
+func getSeparator(lines []string) int {
+	for i, line := range lines {
 		if len(line) == 0 {
-			readRules = false
-		} else if readRules {
-			first, second := splitRule(line)
-			value, exists := rules[first]
-			if !exists {
-				value = make(map[int]struct{})
-			}
-			value[second] = struct{}{}
-			rules[first] = value
-		} else {
-			update := splitUpdate(line)
-			updates = append(updates, update)
+			return i
 		}
 	}
-	return rules, updates
+	return -1
 }
 
 func splitRule(line string) (int, int) {
