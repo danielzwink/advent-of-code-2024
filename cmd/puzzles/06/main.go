@@ -12,9 +12,7 @@ func main() {
 }
 
 func part1() int {
-	area := readArea("06/input")
-	bound := types.NewCoordinate(len(area[0]), len(area))
-	guard := findGuardPosition(area)
+	area, bounds, guard := readArea("06/input")
 
 	moves := [4]*direction{newDirection(0, -1, '^'), newDirection(1, 0, '>'), newDirection(0, 1, 'v'), newDirection(-1, 0, '<')}
 	move, movesIdx := moves[0], 0
@@ -22,27 +20,25 @@ func part1() int {
 	sum := 1
 	for {
 		target := guard.Add(move.coordinate)
-		if target.OutOf(bound) {
+
+		if target.OutOf(bounds) {
 			break
+		} else if area[target.Y][target.X] == '#' {
+			move, movesIdx = changeDirection(movesIdx, moves)
+			area[guard.Y][guard.X] = move.symbol
+			continue
+		} else if area[target.Y][target.X] == '.' {
+			sum++
 		}
 
-		if area[target.Y][target.X] == '#' {
-			move, movesIdx = changeDirection(movesIdx, moves)
-		} else {
-			guard = guard.Add(move.coordinate)
-			if area[guard.Y][guard.X] == '.' {
-				sum++
-			}
-			area[guard.Y][guard.X] = move.symbol
-		}
+		guard = target
+		area[guard.Y][guard.X] = move.symbol
 	}
 	return sum
 }
 
 func part2() int {
-	area := readArea("06/input")
-	bound := types.NewCoordinate(len(area[0]), len(area))
-	guard := findGuardPosition(area)
+	area, bounds, guard := readArea2("06/input")
 
 	moves := [4]*direction{newDirection(0, -1, '^'), newDirection(1, 0, '>'), newDirection(0, 1, 'v'), newDirection(-1, 0, '<')}
 	move, movesIdx := moves[0], 0
@@ -50,32 +46,49 @@ func part2() int {
 	sum := 0
 	for {
 		target := guard.Add(move.coordinate)
-		if target.OutOf(bound) {
+
+		if target.OutOf(bounds) {
 			break
+		} else if area[target.Y][target.X][0] == '#' {
+			move, movesIdx = changeDirection(movesIdx, moves)
+			addSymbol(area, guard, move)
+			continue
 		}
 
 		potentialMove, _ := changeDirection(movesIdx, moves)
-		potentialTarget := guard
-		for {
-			potentialTarget = potentialTarget.Add(potentialMove.coordinate)
-
-			if potentialTarget.OutOf(bound) || area[potentialTarget.Y][potentialTarget.X] == '#' {
-				break
-			}
-			if area[potentialTarget.Y][potentialTarget.X] == potentialMove.symbol {
-				sum++
-				break
-			}
+		if isInfiniteLoop(guard, potentialMove, area, bounds) {
+			sum++
 		}
 
-		if area[target.Y][target.X] == '#' {
-			move, movesIdx = changeDirection(movesIdx, moves)
-		} else {
-			guard = guard.Add(move.coordinate)
-			area[guard.Y][guard.X] = move.symbol
-		}
+		guard = target
+		addSymbol(area, guard, move)
 	}
 	return sum
+}
+
+func addSymbol(area [][][]rune, guard *types.Coordinate, move *direction) {
+	symbols := area[guard.Y][guard.X]
+
+	if len(symbols) == 1 && symbols[0] == '.' {
+		symbols[0] = move.symbol
+	} else {
+		area[guard.Y][guard.X] = append(symbols, move.symbol)
+	}
+}
+
+func isInfiniteLoop(guard *types.Coordinate, move *direction, area [][][]rune, bounds *types.Coordinate) bool {
+	for {
+		guard = guard.Add(move.coordinate)
+
+		if guard.OutOf(bounds) || area[guard.Y][guard.X][0] == '#' {
+			return false
+		}
+		for _, c := range area[guard.Y][guard.X] {
+			if c == move.symbol {
+				return true
+			}
+		}
+	}
 }
 
 type direction struct {
@@ -93,17 +106,6 @@ func changeDirection(idx int, moves [4]*direction) (*direction, int) {
 	return moves[idx], idx
 }
 
-func findGuardPosition(area [][]rune) *types.Coordinate {
-	for y, row := range area {
-		for x, c := range row {
-			if c == '^' {
-				return types.NewCoordinate(x, y)
-			}
-		}
-	}
-	return nil
-}
-
 func printArea(area [][]rune) {
 	for _, row := range area {
 		for _, c := range row {
@@ -114,13 +116,53 @@ func printArea(area [][]rune) {
 	fmt.Println()
 }
 
-func readArea(day string) [][]rune {
+func printArea2(area [][][]rune) {
+	for _, row := range area {
+		for _, c := range row {
+			fmt.Printf("%c", c[len(c)-1])
+		}
+		fmt.Println()
+	}
+	fmt.Println()
+}
+
+func readArea(day string) ([][]rune, *types.Coordinate, *types.Coordinate) {
 	lines := util.ReadFile(day)
 
 	area := make([][]rune, len(lines))
-	for i, line := range lines {
-		area[i] = []rune(line)
+	var guard *types.Coordinate
+	for y, line := range lines {
+		area[y] = []rune(line)
+
+		for x, c := range line {
+			if c == '^' {
+				guard = types.NewCoordinate(x, y)
+			}
+		}
 	}
 
-	return area
+	bounds := types.NewCoordinate(len(area[0]), len(area))
+	return area, bounds, guard
+}
+
+func readArea2(day string) ([][][]rune, *types.Coordinate, *types.Coordinate) {
+	lines := util.ReadFile(day)
+
+	area := make([][][]rune, len(lines))
+	var guard *types.Coordinate
+	for y, line := range lines {
+		area[y] = make([][]rune, len(line))
+
+		for x, c := range line {
+			area[y][x] = make([]rune, 1)
+			area[y][x][0] = c
+
+			if c == '^' {
+				guard = types.NewCoordinate(x, y)
+			}
+		}
+	}
+
+	bounds := types.NewCoordinate(len(area[0]), len(area))
+	return area, bounds, guard
 }
