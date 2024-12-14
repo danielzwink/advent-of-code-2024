@@ -31,6 +31,10 @@ func (c *Coordinate) Within(b *Coordinate) bool {
 	return c.X >= 0 && c.X < b.X && c.Y >= 0 && c.Y < b.Y
 }
 
+func (c *Coordinate) WithinBounds(lower *Coordinate, upper *Coordinate) bool {
+	return c.X >= lower.X && c.X < upper.X && c.Y >= lower.Y && c.Y < upper.Y
+}
+
 func (c *Coordinate) OutOf(b *Coordinate) bool {
 	return c.X < 0 || c.X >= b.X || c.Y < 0 || c.Y >= b.Y
 }
