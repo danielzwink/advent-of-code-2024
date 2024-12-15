@@ -6,6 +6,37 @@ import (
 	"strings"
 )
 
+type Direction string
+
+const (
+	Up        Direction = "Up"
+	Right     Direction = "Right"
+	Down      Direction = "Down"
+	Left      Direction = "Left"
+	UpLeft    Direction = "UpLeft"
+	UpRight   Direction = "UpRight"
+	DownLeft  Direction = "DownLeft"
+	DownRight Direction = "DownRight"
+)
+
+var Directions = map[Direction]*Coordinate{
+	Up:        {0, -1},
+	Right:     {1, 0},
+	Down:      {0, 1},
+	Left:      {-1, 0},
+	UpLeft:    {-1, -1},
+	UpRight:   {1, -1},
+	DownLeft:  {-1, 1},
+	DownRight: {1, 1},
+}
+
+var DirectionSigns = map[rune]*Coordinate{
+	'^': {0, -1},
+	'>': {1, 0},
+	'v': {0, 1},
+	'<': {-1, 0},
+}
+
 type Coordinate struct {
 	X, Y int
 }
